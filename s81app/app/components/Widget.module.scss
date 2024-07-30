@@ -1,0 +1,13 @@
+.widget {
+    background-color: var(--foregroundColor);
+    border-radius: var(--borderRadiusLg);
+    display: flex;
+    flex-flow: column;
+    gap: 16px;
+    padding: 24px 32px;
+    min-height: 290px;
+
+    .widgetContent {
+        flex: 1;
+    }
+}

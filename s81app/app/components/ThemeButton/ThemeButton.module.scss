@@ -1,0 +1,16 @@
+.button {
+    padding: 4px;
+    border-radius: var(--borderRadiusSm);
+
+    &:hover {
+        background-color: var(--hoverColor);
+    }
+
+    &:active {
+        box-shadow: inset 0 0 10px 5px var(--hoverColor)
+    }
+
+    &>* {
+        pointer-events: none;
+    }
+}

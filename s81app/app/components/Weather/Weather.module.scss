@@ -1,0 +1,12 @@
+.weatherContent {
+    display: flex;
+    flex-flow: row;
+    align-items: center;
+    justify-content: space-evenly;
+
+    .temp {
+        font-size: 80px;
+        min-width: 3em;
+        font-weight: var(--fontWeightLighter);
+    }
+}

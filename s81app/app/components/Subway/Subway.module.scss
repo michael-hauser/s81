@@ -1,0 +1,12 @@
+.subwayContent {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    
+    .subwayArrival {
+        display: flex;
+        flex-flow: row nowrap;
+        gap: 8px;
+        align-items: center;
+    }
+}
