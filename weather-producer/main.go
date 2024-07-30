@@ -47,7 +47,12 @@ func main() {
 }
 
 func fetchAndPublishWeatherData(writer *kafka.Writer) {
-	apiKey := "3fd288aecb7ebba1f9bf0b8baefaa95d"
+	apiKey := os.Getenv("WEATHER_API_KEY")
+	if apiKey == "" {
+		log.Println("Error: WEATHER_API_KEY not set in environment")
+		return
+	}
+
 	lat := "40.781433"
 	long := "-73.972143"
 	weatherEndpoint := "https://api.openweathermap.org/data/3.0/onecall?units=imperial&lat=" + lat + "&lon=" + long + "&appid=" + apiKey
