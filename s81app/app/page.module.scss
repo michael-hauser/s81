@@ -13,6 +13,10 @@
         flex-flow: row;
         align-items: flex-start;
         justify-content: space-between;
+
+        .time {
+            margin-top: 1em;
+        }
     }
     
     .main {

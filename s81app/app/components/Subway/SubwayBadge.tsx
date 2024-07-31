@@ -6,6 +6,7 @@ interface SubwayBadgeProps {
 }
 
 const SubwayBadge: React.FC<SubwayBadgeProps> = ({ line = 'A' }) => {  
+    console.log(line);
     return (
         <div className={styles.badge} style={{ backgroundColor: `var(--subway${line})` }}>
             {line}

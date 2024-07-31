@@ -28,8 +28,19 @@ RUN apt-get update && apt-get install -y ca-certificates
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder /app/weather-producer .
 
+# Copy the .env file into the container
+COPY .env /root/.env
+
+# Create a script to load environment variables from the .env file
+RUN echo '#!/bin/sh\n\
+set -a\n\
+. /root/.env\n\
+set +a\n\
+exec "$@"' > /root/entrypoint.sh && chmod +x /root/entrypoint.sh
+
 # Expose port 8080 to the outside world (if needed)
 EXPOSE 8080
 
-# Command to run the executable
+# Use the entrypoint script to load environment variables and run the executable
+ENTRYPOINT ["/root/entrypoint.sh"]
 CMD ["./weather-producer"]

@@ -8,10 +8,17 @@ import (
 	"os"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/segmentio/kafka-go"
 )
 
 func main() {
+	// Load environment variables from .env file
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
 	kafkaURL := os.Getenv("KAFKA_URL")
 	if kafkaURL == "" {
 		kafkaURL = "localhost:9093"
@@ -47,14 +54,9 @@ func main() {
 }
 
 func fetchAndPublishWeatherData(writer *kafka.Writer) {
-	apiKey := os.Getenv("WEATHER_API_KEY")
-	if apiKey == "" {
-		log.Println("Error: WEATHER_API_KEY not set in environment")
-		return
-	}
-
-	lat := "40.781433"
-	long := "-73.972143"
+	apiKey := os.Getenv("API_KEY")
+	lat := os.Getenv("LAT")
+	long := os.Getenv("LONG")
 	weatherEndpoint := "https://api.openweathermap.org/data/3.0/onecall?units=imperial&lat=" + lat + "&lon=" + long + "&appid=" + apiKey
 
 	res, err := http.Get(weatherEndpoint)
@@ -62,7 +64,7 @@ func fetchAndPublishWeatherData(writer *kafka.Writer) {
 		log.Println("Error fetching weather data:", err)
 		return
 	}
-	defer res.Body.Close() // Make sure to close the response body
+	defer res.Body.Close()
 
 	body, _ := io.ReadAll(res.Body)
 	err = writer.WriteMessages(context.Background(),

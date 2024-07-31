@@ -50,8 +50,8 @@ services:
   weather-producer:
     build:
       context: ./weather-producer
-    environment:
-      KAFKA_URL: kafka:9092
+    env_file:
+      - ./weather-producer/.env
     depends_on:
       - kafka
     networks:
