@@ -31,16 +31,13 @@ COPY --from=builder /app/weather-producer .
 # Copy the .env file into the container
 COPY .env /root/.env
 
-# Create a script to load environment variables from the .env file
-RUN echo '#!/bin/sh\n\
-set -a\n\
-. /root/.env\n\
-set +a\n\
-exec "$@"' > /root/entrypoint.sh && chmod +x /root/entrypoint.sh
+# Load environment variables from the .env file into system-wide environment variables
+RUN export $(grep -v '^#' /root/.env | xargs) && \
+    echo 'ENV_FILE=/root/.env' >> /root/.profile && \
+    echo 'for var in $(grep -v '^#' /root/.env | awk -F= '{print $1}'); do export $var=$(grep ^$var= /root/.env | cut -d= -f2-); done' >> /root/.profile
 
 # Expose port 8080 to the outside world (if needed)
 EXPOSE 8080
 
-# Use the entrypoint script to load environment variables and run the executable
-ENTRYPOINT ["/root/entrypoint.sh"]
+# Command to run the executable
 CMD ["./weather-producer"]

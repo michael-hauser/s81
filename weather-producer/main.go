@@ -54,9 +54,9 @@ func main() {
 }
 
 func fetchAndPublishWeatherData(writer *kafka.Writer) {
-	apiKey := os.Getenv("API_KEY")
-	lat := os.Getenv("LAT")
-	long := os.Getenv("LONG")
+	apiKey := os.Getenv("WEATHER_API_KEY")
+	lat := "40.781433"
+	long := "-73.972143"
 	weatherEndpoint := "https://api.openweathermap.org/data/3.0/onecall?units=imperial&lat=" + lat + "&lon=" + long + "&appid=" + apiKey
 
 	res, err := http.Get(weatherEndpoint)
