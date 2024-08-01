@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/segmentio/kafka-go"
 )
@@ -63,15 +64,16 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 	var mu sync.Mutex
 
 	// Send latest messages for each topic
-	for topic := range topicReaders {
-		wg.Add(1)
-		go func(topic string, conn *websocket.Conn) {
-			defer wg.Done()
-			if err := sendLatestMessage(topic, conn); err != nil {
-				log.Printf("Error sending latest message for topic %s: %v\n", topic, err)
-			}
-		}(topic, conn)
-	}
+	// for topic := range topicReaders {
+	// 	wg.Add(1)
+	// 	go func(topic string, conn *websocket.Conn) {
+	// 		defer wg.Done()
+	// 		if err := sendLatestMessage(topic, conn); err != nil {
+	// 			log.Printf("Error sending latest message for topic %s: %v\n", topic, err)
+	// 		}
+	// 	}(topic, conn)
+	// }
+	// sendLatestMessage("weather-data", conn)
 
 	// Start goroutines to read Kafka messages for each reader
 	for topic, reader := range topicReaders {
@@ -99,33 +101,14 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 	mu.Unlock()
 }
 
-// sendLatestMessage fetches the latest message from Kafka for a given topic and sends it to the WebSocket connection.
-func sendLatestMessage(topic string, websocketConnection *websocket.Conn) error {
-	latestReader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:     []string{getKafkaURL()},
-		Topic:       topic,
-		MaxWait:     1 * time.Second,
-		StartOffset: kafka.SeekCurrent,
-	})
-
-	defer latestReader.Close()
-
-	msg, err := latestReader.ReadMessage(context.Background())
-	if err != nil {
-		log.Printf("Error reading latest message for topic %s: %v", topic, err)
-		return err
-	}
-
-	log.Printf("Sending latest message for topic %s", topic)
-	return writeToWebsocket(msg, websocketConnection)
-}
-
 // createKafkaReader creates a Kafka reader for the specified topic.
 func createKafkaReader(topic string, groupID string) *kafka.Reader {
+	uuid := uuid.New().String()
 	return kafka.NewReader(kafka.ReaderConfig{
 		Brokers: []string{getKafkaURL()},
 		Topic:   topic,
-		GroupID: groupID,
+		// StartOffset: kafka.LastOffset,
+		GroupID: groupID + uuid,
 	})
 }
 
@@ -142,7 +125,6 @@ func readKafkaMessages(reader *kafka.Reader, websocketConnection *websocket.Conn
 			return err
 		}
 
-		log.Printf("Received message from Kafka topic %s", topic)
 		if err := writeToWebsocket(msg, websocketConnection); err != nil {
 			log.Printf("Error writing WebSocket message for topic %s: %v\n", topic, err)
 			return err
@@ -174,11 +156,17 @@ func ping(conn *websocket.Conn) {
 	ticker := time.NewTicker(pingPeriod)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		err := conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(writeWait))
-		if err != nil {
-			log.Printf("Ping error: %v\n", err)
-			return
+	for {
+		select {
+		case <-ticker.C:
+			wsMutex.Lock()
+			conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				log.Printf("Error writing ping message: %v\n", err)
+				wsMutex.Unlock()
+				return
+			}
+			wsMutex.Unlock()
 		}
 	}
 }
@@ -192,14 +180,15 @@ func getKafkaURL() string {
 	return kafkaURL
 }
 
-// main starts the HTTP server and handles WebSocket connections.
 func main() {
 	http.HandleFunc("/ws", handleConnection)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8081"
 	}
-	log.Printf("WebSocket server started on port %s\n", port)
-	serverAddr := ":" + port
-	log.Fatal(http.ListenAndServe(serverAddr, nil))
+
+	log.Printf("WebSocket server starting on port %s\n", port)
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
+		log.Fatalf("Failed to start server: %v\n", err)
+	}
 }
