@@ -22,8 +22,9 @@
             width: 100%;
             border-radius: 3px;
             opacity: 0.5;
+            // --position: 0%; /* Default value */
         }
-
+    
         .animation::before {
             content: '';
             position: absolute;
@@ -33,7 +34,7 @@
             width: 16px;
             border-radius: 100%;
             background: var(--fontColorMuted);
-            transition: width 0.3s ease;
+            transition: margin-left 0.3s ease; /* Animate margin-left */
             margin-left: var(--position);
         }
 

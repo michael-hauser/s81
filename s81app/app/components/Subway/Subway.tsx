@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import sharedStyles from '../Widget.module.scss';
 import styles from './Subway.module.scss';
 import SubwayBadge from './SubwayBadge';
-import { Direction, MAX_DISPLAY_TIME, SubwayArrival } from '@/app/models/subwayData';
+import { Direction, MAX_DISPLAY_MINUTES, SubwayArrival } from '@/app/models/subwayData';
 
 interface SubwayProps {
     arrivals?: SubwayArrival[];
@@ -12,7 +12,7 @@ interface SubwayProps {
 const Subway: React.FC<SubwayProps> = ({ arrivals = [], direction }) => {
 
     const getPercentage = (arrivalMinutes: number): number => {
-        const maxMinutes = MAX_DISPLAY_TIME;
+        const maxMinutes = MAX_DISPLAY_MINUTES;
         return Math.abs(Math.min((arrivalMinutes / maxMinutes) * 100, 100));
     }
 
@@ -30,7 +30,9 @@ const Subway: React.FC<SubwayProps> = ({ arrivals = [], direction }) => {
                             <div key={index} className={styles.subwayArrival}>
                                 <SubwayBadge line={arrival.line} />
                                 <span className={styles.time}>{arrival.arrivalMinutes}m</span>
-                                <div className={styles.animation} style={{ '--position': `${getPercentage(arrival.arrivalSeconds / 60)}%` } as React.CSSProperties}></div>
+                                <div className={styles.animation} style={{ 
+                                    '--position': `${getPercentage(arrival.arrivalSeconds / 60)}%` 
+                                } as React.CSSProperties}></div>
                             </div>
                         ))
                 }

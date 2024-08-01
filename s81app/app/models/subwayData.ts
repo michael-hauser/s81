@@ -58,7 +58,7 @@ const convertSecondsToMinutes = (seconds: number): number => {
 }
 
 // Define the maximum display time for subway arrivals
-export const MAX_DISPLAY_TIME = 30;
+export const MAX_DISPLAY_MINUTES = 30;
 
 export const mapSubwayData = (data: SubwayData): SubwayArrival[] => {
     const currentTime = Math.floor(moment().tz('America/New_York').unix());
@@ -86,6 +86,6 @@ export const mapSubwayData = (data: SubwayData): SubwayArrival[] => {
         });
     })
     //filter out 0 arrival times and arrival times greater than MAX_DISPLAY_TIME minutes
-    .filter((arrival) => arrival.arrivalMinutes > 0 && arrival.arrivalMinutes < MAX_DISPLAY_TIME)
+    .filter((arrival) => arrival.arrivalMinutes > 0 && arrival.arrivalMinutes < MAX_DISPLAY_MINUTES)
     .sort((a, b) => a.arrivalMinutes - b.arrivalMinutes);
 };

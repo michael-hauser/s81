@@ -26,7 +26,7 @@ const Main: React.FC = () => {
   const [subwayA, setSubwayA] = useState<SubwayArrival[]>([]);
   const [subwayB, setSubwayB] = useState<SubwayArrival[]>([]);
   const [subwayC, setSubwayC] = useState<SubwayArrival[]>([]);
-  const [subwayData, setSubwayData] = useState<SubwayArrival[]>([]);
+  // const [subwayData, setSubwayData] = useState<SubwayArrival[]>([]);
 
   // Effect to handle new messages
   useEffect(() => {
@@ -54,22 +54,24 @@ const Main: React.FC = () => {
     }
   }, [lastJsonMessage]);
 
-  // Effect to update subwayData every 100ms
-  useEffect(() => {
-    const measure = 200;
-    let counter = 1;
-    const intervalId = setInterval(() => {
-      const a = subwayA.map((arrival) => ({ ...arrival, arrivalSeconds: arrival.arrivalSeconds - measure * counter * 0.001 }));
-      const b = subwayB.map((arrival) => ({ ...arrival, arrivalSeconds: arrival.arrivalSeconds - measure * counter * 0.001 }));
-      const c = subwayC.map((arrival) => ({ ...arrival, arrivalSeconds: arrival.arrivalSeconds - measure * counter * 0.001 }));
-      const updatedSubwayData = [...a, ...b, ...c].sort((a, b) => a.arrivalMinutes - b.arrivalMinutes);
-      setSubwayData(updatedSubwayData);
-      counter++;
-    }, measure);
+  // // Effect to update subwayData every 100ms
+  // useEffect(() => {
+  //   const measure = 200;
+  //   let counter = 1;
+  //   const intervalId = setInterval(() => {
+  //     const a = subwayA.map((arrival) => ({ ...arrival, arrivalSeconds: arrival.arrivalSeconds - measure * counter * 0.001 }));
+  //     const b = subwayB.map((arrival) => ({ ...arrival, arrivalSeconds: arrival.arrivalSeconds - measure * counter * 0.001 }));
+  //     const c = subwayC.map((arrival) => ({ ...arrival, arrivalSeconds: arrival.arrivalSeconds - measure * counter * 0.001 }));
+  //     const updatedSubwayData = [...a, ...b, ...c].sort((a, b) => a.arrivalMinutes - b.arrivalMinutes);
+  //     setSubwayData(updatedSubwayData);
+  //     counter++;
+  //   }, measure);
 
-    // Clear interval on component unmount
-    return () => clearInterval(intervalId);
-  }, [subwayA, subwayB, subwayC]);
+  //   // Clear interval on component unmount
+  //   return () => clearInterval(intervalId);
+  // }, [subwayA, subwayB, subwayC]);
+
+  const subwayData = [...subwayA, ...subwayB, ...subwayC].sort((a, b) => a.arrivalMinutes - b.arrivalMinutes);
 
   return (
     <main className={styles.main}>

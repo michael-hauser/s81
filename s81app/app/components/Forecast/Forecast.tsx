@@ -66,7 +66,7 @@ const Forecast: React.FC<ForecastProps> = ({ data }) => {
                                     <div className={styles.forecastDate}>
                                         {getDayString(day.dt)}
                                     </div>
-                                    <WeatherIcon size={32} />
+                                    <WeatherIcon size={32} weatherData={day} />
                                     <div className={styles.forecastTemp}>
                                         <span className={styles.day}>{Math.round(day.temp.day)}°</span>
                                         <span className={styles.night}>{Math.round(day.temp.night)}°</span>
