@@ -48,6 +48,7 @@ export interface SubwayArrival {
     tripId: string;
     line: string;
     arrivalMinutes: number;
+    arrivalSeconds: number;
     direction: Direction;
 }
 
@@ -55,6 +56,9 @@ export interface SubwayArrival {
 const convertSecondsToMinutes = (seconds: number): number => {
     return Math.ceil(seconds / 60); // Round up to the nearest minute
 }
+
+// Define the maximum display time for subway arrivals
+export const MAX_DISPLAY_TIME = 30;
 
 export const mapSubwayData = (data: SubwayData): SubwayArrival[] => {
     const currentTime = Math.floor(moment().tz('America/New_York').unix());
@@ -76,11 +80,12 @@ export const mapSubwayData = (data: SubwayData): SubwayArrival[] => {
                 tripId: tripUpdate.trip.trip_id,
                 line,
                 arrivalMinutes: Math.max(arrivalMinutes, 0), // Ensure non-negative values
+                arrivalSeconds: arrivalMinutes * 60,
                 direction: stopTimeUpdate.stop_id.includes('N') ? Direction.North : Direction.South
             };
         });
     })
-    //filter out 0 arrival times and arrival times greater than 30 minutes
-    .filter((arrival) => arrival.arrivalMinutes > 0 && arrival.arrivalMinutes < 30)
+    //filter out 0 arrival times and arrival times greater than MAX_DISPLAY_TIME minutes
+    .filter((arrival) => arrival.arrivalMinutes > 0 && arrival.arrivalMinutes < MAX_DISPLAY_TIME)
     .sort((a, b) => a.arrivalMinutes - b.arrivalMinutes);
 };

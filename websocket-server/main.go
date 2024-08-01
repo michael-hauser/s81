@@ -64,16 +64,13 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 	var mu sync.Mutex
 
 	// Send latest messages for each topic
-	// for topic := range topicReaders {
-	// 	wg.Add(1)
-	// 	go func(topic string, conn *websocket.Conn) {
-	// 		defer wg.Done()
-	// 		if err := sendLatestMessage(topic, conn); err != nil {
-	// 			log.Printf("Error sending latest message for topic %s: %v\n", topic, err)
-	// 		}
-	// 	}(topic, conn)
-	// }
-	// sendLatestMessage("weather-data", conn)
+	for topic := range topicReaders {
+		wg.Add(1)
+		go func(topic string, conn *websocket.Conn) {
+			defer wg.Done()
+			sendLatestMessage(topic, conn)
+		}(topic, conn)
+	}
 
 	// Start goroutines to read Kafka messages for each reader
 	for topic, reader := range topicReaders {
@@ -101,14 +98,71 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 	mu.Unlock()
 }
 
+func sendLatestMessage(s string, conn *websocket.Conn) {
+	// Create a Kafka reader for the specified topic.
+	uuid := uuid.New().String()
+	reader := kafka.NewReader(kafka.ReaderConfig{
+		Brokers: []string{getKafkaURL()},
+		Topic:   s,
+		GroupID: "websocket-" + s + "-group-" + uuid,
+	})
+
+	// Define a timeout duration
+	timeoutDuration := 1000 * time.Millisecond
+	ctx, cancel := context.WithTimeout(context.Background(), timeoutDuration)
+	defer cancel()
+
+	var msg kafka.Message
+	var err error
+
+	// Create a channel to signal completion
+	done := make(chan struct{})
+
+	// Read messages from Kafka until context is canceled
+	go func() {
+		defer close(done)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				msg, err = reader.ReadMessage(ctx)
+				if err != nil {
+					if err == context.Canceled {
+						// Context canceled, stop reading
+						return
+					}
+					return
+				}
+			}
+		}
+	}()
+
+	// Wait until either context times out or we have a message
+	select {
+	case <-ctx.Done(): // Timeout or cancellation
+	case <-done: // Completed reading messages
+	}
+
+	// Send the message to the WebSocket connection.
+	if err := writeToWebsocket(msg, conn); err != nil {
+		log.Printf("Error writing WebSocket message for topic %s: %v\n", s, err)
+	}
+
+	// Close the Kafka reader.
+	if err := reader.Close(); err != nil {
+		log.Printf("Error closing Kafka reader: %v\n", err)
+	}
+}
+
 // createKafkaReader creates a Kafka reader for the specified topic.
 func createKafkaReader(topic string, groupID string) *kafka.Reader {
 	uuid := uuid.New().String()
 	return kafka.NewReader(kafka.ReaderConfig{
-		Brokers: []string{getKafkaURL()},
-		Topic:   topic,
-		// StartOffset: kafka.LastOffset,
-		GroupID: groupID + uuid,
+		Brokers:     []string{getKafkaURL()},
+		Topic:       topic,
+		GroupID:     groupID + uuid,
+		StartOffset: kafka.LastOffset,
 	})
 }
 

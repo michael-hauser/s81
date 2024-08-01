@@ -19,7 +19,7 @@ const Weather: React.FC<WeatherProps> = ({ data }) => {
             <h2>Weather</h2>
             <div className={`${sharedStyles.widgetContent} ${styles.weatherContent}`}>
                 <div className={styles.temp}>{temp}</div>
-                <WeatherIcon size={150}/>
+                <WeatherIcon size={130}/>
                 </div>
         </div>
     )

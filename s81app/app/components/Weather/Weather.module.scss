@@ -5,8 +5,17 @@
     justify-content: space-evenly;
 
     .temp {
-        font-size: 80px;
+        font-size: 4rem;
         min-width: 3em;
         font-weight: var(--fontWeightLighter);
+    }
+}
+
+//Media query
+@media (max-width: 600px) {
+    .weatherContent {
+        .temp {
+            font-size: 3rem;
+        }
     }
 }
