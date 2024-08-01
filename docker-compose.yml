@@ -73,6 +73,17 @@ services:
       - weather-producer
     networks:
       - kafka-network
+  
+  s81app:
+    build:
+      context: ./s81app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - kafka
+      - websocket-server
+    networks:
+      - kafka-network
 
 networks:
   kafka-network:

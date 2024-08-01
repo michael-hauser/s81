@@ -6,7 +6,6 @@ import styles from './page.module.scss';
 import Weather from './components/Weather/Weather';
 import Forecast from './components/Forecast/Forecast';
 import Subway from './components/Subway/Subway';
-import SubwaySouth from './components/Subway/SubwaySouth';
 import { Direction, mapSubwayData, SubwayArrival } from './models/subwayData';
 
 type WebSocketMessage = {
@@ -53,23 +52,6 @@ const Main: React.FC = () => {
       }
     }
   }, [lastJsonMessage]);
-
-  // // Effect to update subwayData every 100ms
-  // useEffect(() => {
-  //   const measure = 200;
-  //   let counter = 1;
-  //   const intervalId = setInterval(() => {
-  //     const a = subwayA.map((arrival) => ({ ...arrival, arrivalSeconds: arrival.arrivalSeconds - measure * counter * 0.001 }));
-  //     const b = subwayB.map((arrival) => ({ ...arrival, arrivalSeconds: arrival.arrivalSeconds - measure * counter * 0.001 }));
-  //     const c = subwayC.map((arrival) => ({ ...arrival, arrivalSeconds: arrival.arrivalSeconds - measure * counter * 0.001 }));
-  //     const updatedSubwayData = [...a, ...b, ...c].sort((a, b) => a.arrivalMinutes - b.arrivalMinutes);
-  //     setSubwayData(updatedSubwayData);
-  //     counter++;
-  //   }, measure);
-
-  //   // Clear interval on component unmount
-  //   return () => clearInterval(intervalId);
-  // }, [subwayA, subwayB, subwayC]);
 
   const subwayData = [...subwayA, ...subwayB, ...subwayC].sort((a, b) => a.arrivalMinutes - b.arrivalMinutes);
 
