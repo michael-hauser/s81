@@ -37,8 +37,28 @@ type WebSocketValue struct {
 // Mutex for synchronizing writes to WebSocket connection.
 var wsMutex sync.Mutex
 
+// ConnectionManager manages active WebSocket connections and broadcasts messages.
+type ConnectionManager struct {
+	mu          sync.Mutex
+	connections map[*websocket.Conn]bool
+}
+
+var manager = &ConnectionManager{
+	connections: make(map[*websocket.Conn]bool),
+}
+
 // Main function to start the WebSocket server.
 func main() {
+	topics := []string{"subway-a", "subway-b", "subway-c", "weather-data"}
+
+	// Generate a unique identifier for this instance
+	instanceID := uuid.New().String()
+
+	// Start a Kafka consumer for each topic to broadcast messages
+	for _, topic := range topics {
+		go consumeAndBroadcast(topic, instanceID)
+	}
+
 	// Start WebSocket server
 	http.HandleFunc("/ws", handleConnection)
 	port := os.Getenv("PORT")
@@ -52,7 +72,7 @@ func main() {
 	}
 }
 
-// handleConnection handles incoming WebSocket connections and Kafka messages.
+// handleConnection handles incoming WebSocket connections.
 func handleConnection(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -60,82 +80,43 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() {
-		log.Println("WebSocket connection closed")
+		manager.removeConnection(conn)
 		conn.Close()
 	}()
 
+	manager.addConnection(conn)
+
 	log.Println("New WebSocket connection established")
 
-	topics := []string{"subway-a", "subway-b", "subway-c", "weather-data"}
-	var wg sync.WaitGroup
-
-	// Start a Kafka consumer for each topic
-	for _, topic := range topics {
-		wg.Add(1)
-		go func(topic string) {
-			defer wg.Done()
-			consumeLatestAndStream(conn, topic)
-		}(topic)
-	}
-
 	go ping(conn)
-
-	// Wait for all goroutines to finish
-	wg.Wait()
 }
 
-// consumeLatestAndStream reads the latest message from Kafka and then continues to stream new messages.
-func consumeLatestAndStream(conn *websocket.Conn, topic string) {
-	reader := createKafkaReader(topic)
+// consumeAndBroadcast reads messages from Kafka and broadcasts them to all WebSocket connections.
+func consumeAndBroadcast(topic string, instanceID string) {
+	reader := createKafkaReader(topic, instanceID)
 	defer reader.Close()
 
-	// Consume the latest message first
-	consumeLatestMessage(reader, conn, topic)
-
-	// Continue to stream new messages
 	for {
 		msg, err := reader.ReadMessage(context.Background())
 		if err != nil {
 			if err.Error() == "context canceled" {
-				// Context was canceled, likely due to connection close
 				return
 			}
 			log.Printf("Error reading Kafka message for topic %s: %v\n", topic, err)
-			return
+			continue
 		}
 
-		if err := writeToWebsocket(msg, conn); err != nil {
-			log.Printf("Error writing WebSocket message for topic %s: %v\n", topic, err)
-			return
-		}
+		manager.broadcastMessage(msg)
 	}
 }
 
-// consumeLatestMessage consumes the latest message from Kafka.
-func consumeLatestMessage(reader *kafka.Reader, conn *websocket.Conn, topic string) {
-	// Seek to the last offset to get the latest message
-	reader.SetOffset(kafka.LastOffset)
-
-	// Read the latest message
-	msg, err := reader.ReadMessage(context.Background())
-	if err != nil {
-		log.Printf("Error reading latest Kafka message for topic %s: %v\n", topic, err)
-		return
-	}
-
-	// Send the latest message to the WebSocket connection
-	if err := writeToWebsocket(msg, conn); err != nil {
-		log.Printf("Error writing latest WebSocket message for topic %s: %v\n", topic, err)
-	}
-}
-
-// createKafkaReader creates a Kafka reader for the specified topic.
-func createKafkaReader(topic string) *kafka.Reader {
+// createKafkaReader creates a Kafka reader for the specified topic with a unique consumer group ID.
+func createKafkaReader(topic string, instanceID string) *kafka.Reader {
 	kafkaURL := os.Getenv("KAFKA_URL")
 	if kafkaURL == "" {
 		kafkaURL = "localhost:9093"
 	}
-	groupID := "websocket-" + topic + "-group-" + uuid.New().String()
+	groupID := "websocket-broadcast-" + topic + "-" + instanceID
 	return kafka.NewReader(kafka.ReaderConfig{
 		Brokers:     []string{kafkaURL},
 		Topic:       topic,
@@ -144,15 +125,8 @@ func createKafkaReader(topic string) *kafka.Reader {
 	})
 }
 
-// writeToWebsocket writes a Kafka message to the WebSocket connection.
-func writeToWebsocket(msg kafka.Message, websocketConnection *websocket.Conn) error {
-	wsMutex.Lock()
-	defer wsMutex.Unlock()
-
-	if msg.Value == nil || len(msg.Value) == 0 {
-		return nil
-	}
-
+// broadcastMessage sends a Kafka message to all active WebSocket connections.
+func (m *ConnectionManager) broadcastMessage(msg kafka.Message) {
 	webSocketValue := WebSocketValue{
 		Key:   msg.Topic,
 		Value: string(msg.Value),
@@ -161,10 +135,35 @@ func writeToWebsocket(msg kafka.Message, websocketConnection *websocket.Conn) er
 	jsonValue, err := json.Marshal(webSocketValue)
 	if err != nil {
 		log.Printf("Error marshaling WebSocketValue: %v\n", err)
-		return err
+		return
 	}
 
-	return websocketConnection.WriteMessage(websocket.TextMessage, jsonValue)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for conn := range m.connections {
+		wsMutex.Lock()
+		err := conn.WriteMessage(websocket.TextMessage, jsonValue)
+		wsMutex.Unlock()
+		if err != nil {
+			log.Printf("Error writing message to WebSocket: %v\n", err)
+			m.removeConnection(conn)
+			conn.Close()
+		}
+	}
+}
+
+// addConnection adds a new WebSocket connection to the manager.
+func (m *ConnectionManager) addConnection(conn *websocket.Conn) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.connections[conn] = true
+}
+
+// removeConnection removes a WebSocket connection from the manager.
+func (m *ConnectionManager) removeConnection(conn *websocket.Conn) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.connections, conn)
 }
 
 // ping sends ping messages to keep the WebSocket connection alive.
