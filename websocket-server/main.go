@@ -21,6 +21,9 @@ const (
 	closeGracePeriod = 10 * time.Second    // Time to wait before force close on connection.
 )
 
+// Topics list
+var topics = []string{"subway-a", "subway-b", "subway-c", "weather-data"}
+
 // WebSocket upgrader for upgrading HTTP connections to WebSocket.
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
@@ -49,8 +52,6 @@ var manager = &ConnectionManager{
 
 // Main function to start the WebSocket server.
 func main() {
-	topics := []string{"subway-a", "subway-b", "subway-c", "weather-data"}
-
 	// Generate a unique identifier for this instance
 	instanceID := uuid.New().String()
 
@@ -91,7 +92,7 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 	go ping(conn)
 }
 
-// consumeAndBroadcast reads messages from Kafka and broadcasts them to all WebSocket connections.
+// consumeAndBroadcast reads messages from Kafka and broadcasts them to all active WebSocket connections.
 func consumeAndBroadcast(topic string, instanceID string) {
 	reader := createKafkaReader(topic, instanceID)
 	defer reader.Close()
@@ -106,6 +107,7 @@ func consumeAndBroadcast(topic string, instanceID string) {
 			continue
 		}
 
+		// Directly broadcast the message to all active connections
 		manager.broadcastMessage(msg)
 	}
 }
@@ -152,11 +154,52 @@ func (m *ConnectionManager) broadcastMessage(msg kafka.Message) {
 	}
 }
 
-// addConnection adds a new WebSocket connection to the manager.
+// addConnection adds a new WebSocket connection to the manager and sends the latest message.
 func (m *ConnectionManager) addConnection(conn *websocket.Conn) {
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	m.connections[conn] = true
+	m.mu.Unlock()
+
+	m.broadcastLatestMessages(conn)
+}
+
+// broadcastLatestMessages sends the latest message for each topic to the new connection.
+func (m *ConnectionManager) broadcastLatestMessages(conn *websocket.Conn) {
+	for _, topic := range topics {
+		// Create a temporary Kafka reader to get the latest message for the topic
+		reader := createKafkaReader(topic, uuid.New().String())
+		defer reader.Close()
+
+		// Seek to the last offset to get the latest message
+		reader.SetOffset(kafka.LastOffset)
+
+		// Read the latest message
+		msg, err := reader.ReadMessage(context.Background())
+		if err != nil {
+			log.Printf("Error reading latest Kafka message for topic %s: %v\n", topic, err)
+			continue
+		}
+
+		// Send the latest message directly to the newly established WebSocket connection
+		webSocketValue := WebSocketValue{
+			Key:   msg.Topic,
+			Value: string(msg.Value),
+		}
+
+		jsonValue, err := json.Marshal(webSocketValue)
+		if err != nil {
+			log.Printf("Error marshaling WebSocketValue: %v\n", err)
+			return
+		}
+
+		wsMutex.Lock()
+		errWs := conn.WriteMessage(websocket.TextMessage, jsonValue)
+		wsMutex.Unlock()
+		if errWs != nil {
+			log.Printf("Error sending latest message to new WebSocket connection: %v\n", errWs)
+			return
+		}
+	}
 }
 
 // removeConnection removes a WebSocket connection from the manager.
