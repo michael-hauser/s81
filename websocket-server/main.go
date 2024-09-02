@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	writeWait        = 10 * time.Second    // Time allowed to write a message to the peer.
+	writeWait        = 15 * time.Second    // Increased time allowed to write a message to the peer.
 	pongWait         = 60 * time.Second    // Time allowed to read the next pong message from the peer.
 	pingPeriod       = (pongWait * 9) / 10 // Send pings to peer with this period.
 	closeGracePeriod = 10 * time.Second    // Time to wait before force close on connection.
@@ -37,17 +37,16 @@ type WebSocketValue struct {
 	Value string `json:"value"`
 }
 
-// Mutex for synchronizing writes to WebSocket connection.
-var wsMutex sync.Mutex
-
 // ConnectionManager manages active WebSocket connections and broadcasts messages.
 type ConnectionManager struct {
-	mu          sync.Mutex
-	connections map[*websocket.Conn]bool
+	mu             sync.RWMutex
+	connections    map[*websocket.Conn]struct{}
+	latestMessages map[string]kafka.Message
 }
 
 var manager = &ConnectionManager{
-	connections: make(map[*websocket.Conn]bool),
+	connections:    make(map[*websocket.Conn]struct{}),
+	latestMessages: make(map[string]kafka.Message),
 }
 
 // Main function to start the WebSocket server.
@@ -55,12 +54,11 @@ func main() {
 	// Generate a unique identifier for this instance
 	instanceID := uuid.New().String()
 
-	// Start a Kafka consumer for each topic to broadcast messages
+	// Start Kafka consumers
 	for _, topic := range topics {
-		go consumeAndBroadcast(topic, instanceID)
+		go consumeAndSendDirectly(topic, instanceID)
 	}
 
-	// Start WebSocket server
 	http.HandleFunc("/ws", handleConnection)
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -80,20 +78,15 @@ func handleConnection(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error while connecting to WebSocket: %v\n", err)
 		return
 	}
-	defer func() {
-		manager.removeConnection(conn)
-		conn.Close()
-	}()
 
 	manager.addConnection(conn)
-
 	log.Println("New WebSocket connection established")
 
 	go ping(conn)
 }
 
-// consumeAndBroadcast reads messages from Kafka and broadcasts them to all active WebSocket connections.
-func consumeAndBroadcast(topic string, instanceID string) {
+// consumeAndSendDirectly reads messages from Kafka and immediately sends them to all active WebSocket connections.
+func consumeAndSendDirectly(topic string, instanceID string) {
 	reader := createKafkaReader(topic, instanceID)
 	defer reader.Close()
 
@@ -109,6 +102,8 @@ func consumeAndBroadcast(topic string, instanceID string) {
 
 		// Directly broadcast the message to all active connections
 		manager.broadcastMessage(msg)
+		// Update the latest message
+		manager.updateLatestMessage(topic, msg)
 	}
 }
 
@@ -140,47 +135,34 @@ func (m *ConnectionManager) broadcastMessage(msg kafka.Message) {
 		return
 	}
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	for conn := range m.connections {
-		wsMutex.Lock()
+		conn.SetWriteDeadline(time.Now().Add(writeWait))
 		err := conn.WriteMessage(websocket.TextMessage, jsonValue)
-		wsMutex.Unlock()
 		if err != nil {
 			log.Printf("Error writing message to WebSocket: %v\n", err)
-			m.removeConnection(conn)
-			conn.Close()
+			m.removeAndCloseConnection(conn)
 		}
 	}
 }
 
-// addConnection adds a new WebSocket connection to the manager and sends the latest message.
+// addConnection adds a new WebSocket connection to the manager and sends the latest messages.
 func (m *ConnectionManager) addConnection(conn *websocket.Conn) {
 	m.mu.Lock()
-	m.connections[conn] = true
+	m.connections[conn] = struct{}{}
 	m.mu.Unlock()
 
-	m.broadcastLatestMessages(conn)
+	m.sendLatestMessages(conn)
 }
 
-// broadcastLatestMessages sends the latest message for each topic to the new connection.
-func (m *ConnectionManager) broadcastLatestMessages(conn *websocket.Conn) {
-	for _, topic := range topics {
-		// Create a temporary Kafka reader to get the latest message for the topic
-		reader := createKafkaReader(topic, uuid.New().String())
-		defer reader.Close()
+// sendLatestMessages sends the latest message for each topic to the new connection.
+func (m *ConnectionManager) sendLatestMessages(conn *websocket.Conn) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 
-		// Seek to the last offset to get the latest message
-		reader.SetOffset(kafka.LastOffset)
-
-		// Read the latest message
-		msg, err := reader.ReadMessage(context.Background())
-		if err != nil {
-			log.Printf("Error reading latest Kafka message for topic %s: %v\n", topic, err)
-			continue
-		}
-
-		// Send the latest message directly to the newly established WebSocket connection
+	for _, msg := range m.latestMessages {
 		webSocketValue := WebSocketValue{
 			Key:   msg.Topic,
 			Value: string(msg.Value),
@@ -189,24 +171,36 @@ func (m *ConnectionManager) broadcastLatestMessages(conn *websocket.Conn) {
 		jsonValue, err := json.Marshal(webSocketValue)
 		if err != nil {
 			log.Printf("Error marshaling WebSocketValue: %v\n", err)
-			return
+			continue
 		}
 
-		wsMutex.Lock()
-		errWs := conn.WriteMessage(websocket.TextMessage, jsonValue)
-		wsMutex.Unlock()
-		if errWs != nil {
-			log.Printf("Error sending latest message to new WebSocket connection: %v\n", errWs)
+		conn.SetWriteDeadline(time.Now().Add(writeWait))
+		if err := conn.WriteMessage(websocket.TextMessage, jsonValue); err != nil {
+			log.Printf("Error sending latest message to new WebSocket connection: %v\n", err)
+			m.removeAndCloseConnection(conn)
 			return
 		}
 	}
 }
 
-// removeConnection removes a WebSocket connection from the manager.
-func (m *ConnectionManager) removeConnection(conn *websocket.Conn) {
+// updateLatestMessage updates the latest message for a given topic.
+func (m *ConnectionManager) updateLatestMessage(topic string, msg kafka.Message) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	delete(m.connections, conn)
+	m.latestMessages[topic] = msg
+}
+
+// removeAndCloseConnection removes a WebSocket connection from the manager and ensures it's properly closed.
+func (m *ConnectionManager) removeAndCloseConnection(conn *websocket.Conn) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Check if the connection is still in the map before attempting to remove and close it
+	if _, ok := m.connections[conn]; ok {
+		log.Println("Removing and closing connection due to error")
+		conn.Close()                // Close the WebSocket connection
+		delete(m.connections, conn) // Remove the connection from the map
+	}
 }
 
 // ping sends ping messages to keep the WebSocket connection alive.
@@ -215,13 +209,11 @@ func ping(conn *websocket.Conn) {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		wsMutex.Lock()
 		conn.SetWriteDeadline(time.Now().Add(writeWait))
 		if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 			log.Printf("Error writing ping message: %v\n", err)
-			wsMutex.Unlock()
+			manager.removeAndCloseConnection(conn) // Properly remove the connection if ping fails
 			return
 		}
-		wsMutex.Unlock()
 	}
 }
