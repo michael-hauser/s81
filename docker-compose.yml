@@ -109,6 +109,20 @@ services:
     networks:
       - kafka-network
 
+  s81nativeApp:
+    build:
+      context: ./s81nativeApp
+    ports:
+      - "19000:19000"
+      - "19001:19001"
+      - "19002:19002"
+      - "19006:19006"
+    depends_on:
+      - kafka
+      - websocket-server
+    networks:
+      - kafka-network
+
 networks:
   kafka-network:
     driver: bridge

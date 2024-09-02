@@ -27,14 +27,6 @@
   --hoverColor: rgba(0, 0, 0, 0.05);
 }
 
-/* html.light {
-  --fontColor: #000000;
-  --fontColorMuted: #939393;
-  --backgroundColor: #F3F2EE;
-  --foregroundColor: #FFFFFF;
-  --hoverColor: rgba(0, 0, 0, 0.05);
-} */
-
 html.dark {
   --fontColor: #FFFFFF;
   --fontColorMuted: #939393;
