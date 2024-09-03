@@ -2,13 +2,13 @@ import React, { memo } from 'react';
 import { Image, StyleSheet } from 'react-native';
 
 
-const cloud = require('@/assets/images/cloud.svg');
-const lightning = require('@/assets/images/lightning.svg');
-const rain = require('@/assets/images/rain.svg');
-const snow = require('@/assets/images/snow.svg');
-const sun = require('@/assets/images/sun.svg');
+const cloud = require('@/assets/images/cloud.png');
+const lightning = require('@/assets/images/lightning.png');
+const rain = require('@/assets/images/rain.png');
+const snow = require('@/assets/images/snow.png');
+const sun = require('@/assets/images/sun.png');
 const sunCloud = require('@/assets/images/suncloud.png');
-const suncloudrain = require('@/assets/images/suncloudrain.svg');
+const suncloudrain = require('@/assets/images/suncloudrain.png');
 
 interface WeatherIconProps {
   weatherData?: CurrentWeather | DailyWeather;
@@ -64,7 +64,7 @@ const WeatherIcon: React.FC<WeatherIconProps> = ({ weatherData, size = 16 }) => 
     }
   }
 
-  return <Image source={iconSrc} width={size} height={size} style={styles.icon} />;
+  return <Image source={iconSrc} width={size} height={size} style={[styles.icon, { width: size, height: size }]} />;
 };
 
 const styles = StyleSheet.create({

@@ -1,9 +1,8 @@
 import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import WeatherIcon from './WeatherIcon';
-import { ThemedView } from './ThemedView';
+import Widget from './Widget';
 import { ThemedText } from './ThemedText';
-import { BorderRadius } from '@/constants/Spaces';
 
 interface WeatherProps {
   data?: WeatherData;
@@ -16,35 +15,26 @@ const Weather: React.FC<WeatherProps> = ({ data }) => {
   };
 
   return (
-    <ThemedView type='foreground' style={styles.widget}>
-      <ThemedText style={styles.title}>Weather</ThemedText>
+    <Widget>
+      <ThemedText type='bold'>Weather</ThemedText>
       <View style={styles.weatherContent}>
         <ThemedText style={styles.temp}>{getTemp(data?.current?.temp)}</ThemedText>
-        <WeatherIcon size={130} weatherData={data?.current} />
+        <WeatherIcon size={80} weatherData={data?.current} />
       </View>
-    </ThemedView>
+    </Widget>
   );
 };
 
 const styles = StyleSheet.create({
-  widget: {
-    borderRadius: BorderRadius.lg,
-    display: 'flex',
-    gap: 16,
-    paddingVertical: 24,
-    paddingHorizontal: 32,
-    minHeight: 290,
-    overflow: 'hidden',
-  },
-  title: {
-  },
   weatherContent: {
-    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
     flex: 1,
   },
   temp: {
-    fontSize: 48,
-    lineHeight: 48,
+    fontSize: 50,
+    lineHeight: 50,
     fontWeight: '200',
   },
 });

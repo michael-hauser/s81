@@ -1,61 +1,61 @@
-.forecastContent{
-    display: flex;
-    flex-flow: column;
-    font-weight: var(--fontWeightLight);
-    overflow-x: auto;
-
-    .chart {
+    .forecastContent{
         display: flex;
-        flex: 1;
-        
-        .tooltip {
-            border-radius: var(--borderRadiusSm);
-            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1), 0px 2px 4px rgba(0, 0, 0, 0.05);
-            background-color: var(--foregroundColor);
-            padding: 8px;
-            display: flex;
-            flex-flow: column;
-            align-items: center;
-            gap: 4px;
-            font-size: 0.8em;
+        flex-flow: column;
+        font-weight: var(--fontWeightLight);
+        overflow-x: auto;
 
-            .tooltipTitle {
-                font-weight: var(--fontWeightBold);
-            }
-    
-            .temp {
+        .chart {
+            display: flex;
+            flex: 1;
+            
+            .tooltip {
+                border-radius: var(--borderRadiusSm);
+                box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1), 0px 2px 4px rgba(0, 0, 0, 0.05);
+                background-color: var(--foregroundColor);
+                padding: 8px;
                 display: flex;
-                flex-flow: row;
+                flex-flow: column;
+                align-items: center;
                 gap: 4px;
-            }
-        }
+                font-size: 0.8em;
+
+                .tooltipTitle {
+                    font-weight: var(--fontWeightBold);
+                }
         
-    }
+                .temp {
+                    display: flex;
+                    flex-flow: row;
+                    gap: 4px;
+                }
+            }
+            
+        }
 
-    .legend {
-        width: 100%;
-        display: flex;
-        flex-flow: row;
-        justify-content: space-between;
-
-        .forecastDay {
+        .legend {
+            width: 100%;
             display: flex;
-            flex-flow: column;
-            align-items: center;
-            gap: 8px;
+            flex-flow: row;
+            justify-content: space-between;
 
-            .forecastTemp {
+            .forecastDay {
                 display: flex;
-                flex-flow: row;
-                width: 100%;
-                justify-content: space-evenly;
-                gap: 2px;
-                font-size: 11px;
+                flex-flow: column;
+                align-items: center;
+                gap: 8px;
+
+                .forecastTemp {
+                    display: flex;
+                    flex-flow: row;
+                    width: 100%;
+                    justify-content: space-evenly;
+                    gap: 2px;
+                    font-size: 11px;
+                }
             }
         }
-    }
 
-    .night {
-        color: var(--fontColorMuted);
+        .night {
+            color: var(--fontColorMuted);
+        }
     }
-}

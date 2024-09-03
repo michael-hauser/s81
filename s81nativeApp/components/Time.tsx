@@ -10,10 +10,10 @@ export default function Time() {
         const now = new Date();
         const nycTime = new Intl.DateTimeFormat('en-US', {
           timeZone: 'America/New_York',
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
+          weekday: 'short',
+          year: '2-digit',
+          month: '2-digit',
+          day: '2-digit',
           hour: 'numeric',
           minute: 'numeric',
           second: 'numeric',
