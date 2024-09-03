@@ -4,7 +4,8 @@
 
 ## Tech Stack
 
-- **Frontend:** Next.js, TypeScript, SCSS
+- **Frontend:** Next.js, TypeScript, SCSS, Recharts
+- **Mobile:** React Native, Expo, TypeScript, react-native-svg
 - **Backend:** Golang, Kafka
 - **Real-Time:** WebSockets
 - **Deployment:** Docker, Docker Compose
