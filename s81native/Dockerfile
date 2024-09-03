@@ -1,5 +1,5 @@
 # Use a Node.js base image
-FROM node:16
+FROM node:22
 
 # Set the working directory
 WORKDIR /app
@@ -8,10 +8,11 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install --global expo-cli
+RUN npm install -g expo-cli
+RUN npm install -g @expo/ngrok
 
 # Copy the project files
 COPY . .
 
 # Start the Expo server on the specified port
-CMD ["expo", "start", "--tunnel", "--port", "19006"]
+CMD ["npx", "expo", "start", "--tunnel", "--port", "19006"]

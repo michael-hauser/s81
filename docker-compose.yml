@@ -109,9 +109,9 @@ services:
     networks:
       - kafka-network
 
-  s81nativeApp:
+  s81native:
     build:
-      context: ./s81nativeApp
+      context: ./s81native
     ports:
       - "19000:19000"
       - "19001:19001"
