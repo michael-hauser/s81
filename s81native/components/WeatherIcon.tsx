@@ -1,7 +1,6 @@
 import React, { memo } from 'react';
 import { Image, StyleSheet } from 'react-native';
 
-
 const cloud = require('@/assets/images/cloud.png');
 const lightning = require('@/assets/images/lightning.png');
 const rain = require('@/assets/images/rain.png');

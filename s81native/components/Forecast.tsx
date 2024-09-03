@@ -4,10 +4,10 @@ import WeatherIcon from './WeatherIcon';
 import Widget from './Widget';
 import { ThemedText } from './ThemedText';
 import { Colors } from '@/constants/Colors';
-import { AreaChart, Grid, XAxis } from 'react-native-svg-charts';
-import * as shape from 'd3-shape';
-import { Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { Defs, LinearGradient, Stop } from 'react-native-svg';
+import { AreaChart } from 'react-native-svg-charts';
+import * as shape from 'd3-shape';
 
 interface ForecastProps {
   data?: WeatherData;
@@ -43,6 +43,7 @@ const Forecast: React.FC<ForecastProps> = ({ data }) => {
               data={chartData}
               contentInset={contentInset}
               curve={shape.curveNatural}
+              yMin={chartData.reduce((min, val) => Math.min(min, val), Infinity) - 8}
               svg={{
                 fill: 'url(#chartGradient)',
                 stroke: 'url(#chartGradient)',
@@ -52,7 +53,7 @@ const Forecast: React.FC<ForecastProps> = ({ data }) => {
               <Defs key={'defs'}>
                 <LinearGradient id={'chartGradient'} x1={'0'} y1={'0'} x2={'0'} y2={'1'}>
                   <Stop offset={'0%'} stopColor={Colors.light.sunshine} stopOpacity={0.7} />
-                  <Stop offset={'19%'} stopColor={Colors.light.sunshine} stopOpacity={0} />
+                  <Stop offset={'31%'} stopColor={Colors.light.sunshine} stopOpacity={0} />
                 </LinearGradient>
               </Defs>
             </AreaChart>
@@ -75,6 +76,8 @@ const Forecast: React.FC<ForecastProps> = ({ data }) => {
   );
 };
 
+const chartWidth = 500;
+
 const styles = StyleSheet.create({
   scrollContainer: {
     flexDirection: 'row',
@@ -92,11 +95,11 @@ const styles = StyleSheet.create({
   areaChart: {
     flex: 1,
     height: 100,
-    width: 500, // Increase this width to allow scrolling
+    width: chartWidth,
   },
   xAxis: {
     marginHorizontal: -10,
-    width: 500, // Match the width of the chart for consistency
+    width: chartWidth,
   },
   legend: {
     flexDirection: 'row',
